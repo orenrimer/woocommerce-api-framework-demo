@@ -20,8 +20,8 @@ class WoocoApiUtils:
         assert status_code == expected_status_code, f"expected status code is {expected_status_code}, got {status_code}." \
                                                     f"response: {response_json}"
 
-    def get(self, endpoint, expected_status_code=200):
-        response = self.wcapi.get(endpoint)
+    def get(self, endpoint, params=None, expected_status_code=200):
+        response = self.wcapi.get(endpoint, params=params)
         status_code = response.status_code
         response_json = response.json()
         self.validate_status_code(status_code, expected_status_code, response_json)
