@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <style>body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  /* do not increase min-width as some may use split screens */
+  min-width: 800px;
+  color: #999;
+}
+
+h1 {
+  font-size: 24px;
+  color: black;
+}
+
+h2 {
+  font-size: 16px;
+  color: black;
+}
+
+p {
+  color: black;
+}
+
+a {
+  color: #999;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/******************************
+ * SUMMARY INFORMATION
+ ******************************/
+#environment td {
+  padding: 5px;
+  border: 1px solid #E6E6E6;
+}
+
+#environment tr:nth-child(odd) {
+  background-color: #f6f6f6;
+}
+
+/******************************
+ * TEST RESULT COLORS
+ ******************************/
+span.passed, .passed .col-result {
+  color: green;
+}
+
+span.skipped, span.xfailed, span.rerun, .skipped .col-result, .xfailed .col-result, .rerun .col-result {
+  color: orange;
+}
+
+span.error, span.failed, span.xpassed, .error .col-result, .failed .col-result, .xpassed .col-result {
+  color: red;
+}
+
+/******************************
+ * RESULTS TABLE
+ *
+ * 1. Table Layout
+ * 2. Extra
+ * 3. Sorting items
+ *
+ ******************************/
+/*------------------
+ * 1. Table Layout
+ *------------------*/
+#results-table {
+  border: 1px solid #e6e6e6;
+  color: #999;
+  font-size: 12px;
+  width: 100%;
+}
+
+#results-table th, #results-table td {
+  padding: 5px;
+  border: 1px solid #E6E6E6;
+  text-align: left;
+}
+
+#results-table th {
+  font-weight: bold;
+}
+
+/*------------------
+ * 2. Extra
+ *------------------*/
+.log:only-child {
+  height: inherit;
+}
+
+.log {
+  background-color: #e6e6e6;
+  border: 1px solid #e6e6e6;
+  color: black;
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  height: 230px;
+  overflow-y: scroll;
+  padding: 5px;
+  white-space: pre-wrap;
+}
+
+div.image {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin-left: 5px;
+  overflow: hidden;
+  width: 320px;
+}
+
+div.image img {
+  width: 320px;
+}
+
+div.video {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin-left: 5px;
+  overflow: hidden;
+  width: 320px;
+}
+
+div.video video {
+  overflow: hidden;
+  width: 320px;
+  height: 240px;
+}
+
+.collapsed {
+  display: none;
+}
+
+.expander::after {
+  content: " (show details)";
+  color: #BBB;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.collapser::after {
+  content: " (hide details)";
+  color: #BBB;
+  font-style: italic;
+  cursor: pointer;
+}
+
+/*------------------
+ * 3. Sorting items
+ *------------------*/
+.sortable {
+  cursor: pointer;
+}
+
+.sort-icon {
+  font-size: 0px;
+  float: left;
+  margin-right: 5px;
+  margin-top: 5px;
+  /*triangle*/
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+}
+
+.inactive .sort-icon {
+  /*finish triangle*/
+  border-top: 8px solid #E6E6E6;
+}
+
+.asc.active .sort-icon {
+  /*finish triangle*/
+  border-bottom: 8px solid #999;
+}
+
+.desc.active .sort-icon {
+  /*finish triangle*/
+  border-top: 8px solid #999;
+}
+</style></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function find_all(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sort_column(elem) {
+    toggle_sort_states(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = key_result;
+    } else if (elem.classList.contains('links')) {
+        key = key_link;
+    } else {
+        key = key_alpha;
+    }
+    sort_table(elem, key(colIndex));
+}
+
+function show_all_extras() { // eslint-disable-line no-unused-vars
+    find_all('.col-result').forEach(show_extras);
+}
+
+function hide_all_extras() { // eslint-disable-line no-unused-vars
+    find_all('.col-result').forEach(hide_extras);
+}
+
+function show_extras(colresult_elem) {
+    const extras = colresult_elem.parentNode.nextElementSibling;
+    const expandcollapse = colresult_elem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hide_extras(colresult_elem) {
+    const extras = colresult_elem.parentNode.nextElementSibling;
+    const expandcollapse = colresult_elem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function show_filters() {
+    const filter_items = document.getElementsByClassName('filter');
+    for (let i = 0; i < filter_items.length; i++)
+        filter_items[i].hidden = false;
+}
+
+function add_collapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:show_all_extras()">Show all details</a> / ' +
+                            '<a href="javascript:hide_all_extras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    find_all('.col-result').forEach(function(elem) {
+        const collapsed = get_query_parameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                show_extras(event.currentTarget);
+            } else {
+                hide_extras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function get_query_parameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    reset_sort_headers();
+
+    add_collapse();
+
+    show_filters();
+
+    sort_column(find('.initial-sort'));
+
+    find_all('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sort_column(elem);
+            }, false);
+    });
+}
+
+function sort_table(clicked, key_func) {
+    const rows = find_all('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sorted_rows = sort(rows, key_func, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sorted_rows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, key_func, reversed) {
+    const sort_array = items.map(function(item, i) {
+        return [key_func(item), i];
+    });
+
+    sort_array.sort(function(a, b) {
+        const key_a = a[0];
+        const key_b = b[0];
+
+        if (key_a == key_b) return 0;
+
+        if (reversed) {
+            return key_a < key_b ? 1 : -1;
+        } else {
+            return key_a > key_b ? 1 : -1;
+        }
+    });
+
+    return sort_array.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function key_alpha(col_index) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[col_index].firstChild.data.toLowerCase();
+    };
+}
+
+function key_link(col_index) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[col_index].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function key_result(col_index) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[col_index].firstChild.data);
+    };
+}
+
+function reset_sort_headers() {
+    find_all('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    find_all('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggle_sort_states(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        reset_sort_headers();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function is_all_rows_hidden(value) {
+    return value.hidden == false;
+}
+
+function filter_table(elem) { // eslint-disable-line no-unused-vars
+    const outcome_att = 'data-test-result';
+    const outcome = elem.getAttribute(outcome_att);
+    const class_outcome = outcome + ' results-table-row';
+    const outcome_rows = document.getElementsByClassName(class_outcome);
+
+    for(let i = 0; i < outcome_rows.length; i++){
+        outcome_rows[i].hidden = !elem.checked;
+    }
+
+    const rows = find_all('.results-table-row').filter(is_all_rows_hidden);
+    const all_rows_hidden = rows.length == 0 ? true : false;
+    const not_found_message = document.getElementById('not-found-message');
+    not_found_message.hidden = !all_rows_hidden;
+}
+</script>
+    <h1>customers.html</h1>
+    <p>Report generated on 15-Dec-2020 at 17:01:13 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.0</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>JAVA_HOME</td>
+        <td>C:\Program Files\Java\jdk-13</td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "0.13.1", "py": "1.9.0", "pytest": "5.4.3"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Windows-10-10.0.19041-SP0</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"html": "3.1.0", "metadata": "1.11.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.8.3</td></tr></table>
+    <h2>Summary</h2>
+    <p>3 tests ran in 4.05 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="passed">3 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filter_table(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/customers/test_create_customer_smoke.py::test_create_customer_only_email_and_password</td>
+          <td class="col-duration">1.65</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:test_create_customer_smoke.py:12 TEST::create a new customer with only email and password
+DEBUG    root:genericUtils.py:20 generating random email: testuser_yittkjbgrs@gmail.com
+DEBUG    root:genericUtils.py:26 generating random password: rRFpawUITGEahdWS
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [POST]&gt; using client &lt;Client client_key=ck_e7ab74195ab82fbd228cd20296b2e855f7659b25, client_secret=****, resource_owner_key=None, resource_owner_secret=None, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:91 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;oauth_nonce&#x27;, &#x27;121011506551646490221608044469&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1608044469&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: oauth_consumer_key=ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&amp;oauth_nonce=121011506551646490221608044469&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1608044469&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: http://tests.local/wp-json/wc/v3/customers
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: POST&amp;http%3A%2F%2Ftests.local%2Fwp-json%2Fwc%2Fv3%2Fcustomers&amp;oauth_consumer_key%3Dck_e7ab74195ab82fbd228cd20296b2e855f7659b25%26oauth_nonce%3D121011506551646490221608044469%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1608044469%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: D/fxQoQCcsavktcdpEVDqceme+k=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: http://tests.local/wp-json/wc/v3/customers
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.0&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Content-Type&#x27;: b&#x27;application/json&#x27;, b&#x27;Content-Length&#x27;: b&#x27;74&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;121011506551646490221608044469&quot;, oauth_timestamp=&quot;1608044469&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&quot;, oauth_signature=&quot;D%2FfxQoQCcsavktcdpEVDqceme%2Bk%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: &#x27;{&quot;email&quot;: &quot;testuser_yittkjbgrs@gmail.com&quot;, &quot;password&quot;: &quot;rRFpawUITGEahdWS&quot;}&#x27;
+DEBUG    urllib3.connectionpool:connectionpool.py:226 Starting new HTTP connection (1): tests.local:80
+DEBUG    urllib3.connectionpool:connectionpool.py:433 http://tests.local:80 &quot;POST /wp-json/wc/v3/customers HTTP/1.1&quot; 201 None
+DEBUG    root:requestUtils.py:29 API POST response: {&#x27;id&#x27;: 51, &#x27;date_created&#x27;: &#x27;2020-12-15T15:01:10&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-15T15:01:10&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-15T15:01:11&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-15T15:01:11&#x27;, &#x27;email&#x27;: &#x27;testuser_yittkjbgrs@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_yittkjbgrs&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://1.gravatar.com/avatar/d1ce28db25c5c0f4dfbee5359d63ee79?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/51&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}
+DEBUG    root:db_utils.py:22 executing sql: SELECT * FROM local.wp_users WHERE user_email = &#x27;testuser_yittkjbgrs@gmail.com&#x27;;<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/customers/test_create_customer_smoke.py::test_create_customer_with_fails_existing_email</td>
+          <td class="col-duration">0.40</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:test_create_customer_smoke.py:35 TEST::create a new customer with an existing email
+DEBUG    root:db_utils.py:22 executing sql: SELECT * FROM local.wp_users ORDER BY ID DESC LIMIT 5000;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [POST]&gt; using client &lt;Client client_key=ck_e7ab74195ab82fbd228cd20296b2e855f7659b25, client_secret=****, resource_owner_key=None, resource_owner_secret=None, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:91 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;oauth_nonce&#x27;, &#x27;37903395555994635231608044471&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1608044471&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: oauth_consumer_key=ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&amp;oauth_nonce=37903395555994635231608044471&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1608044471&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: http://tests.local/wp-json/wc/v3/customers
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: POST&amp;http%3A%2F%2Ftests.local%2Fwp-json%2Fwc%2Fv3%2Fcustomers&amp;oauth_consumer_key%3Dck_e7ab74195ab82fbd228cd20296b2e855f7659b25%26oauth_nonce%3D37903395555994635231608044471%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1608044471%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: xrvdvwpbGzUuegFJDKws/RGlgY4=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: http://tests.local/wp-json/wc/v3/customers
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.0&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Content-Type&#x27;: b&#x27;application/json&#x27;, b&#x27;Content-Length&#x27;: b&#x27;73&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;37903395555994635231608044471&quot;, oauth_timestamp=&quot;1608044471&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&quot;, oauth_signature=&quot;xrvdvwpbGzUuegFJDKws%2FRGlgY4%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: &#x27;{&quot;email&quot;: &quot;testuser_lzcslefnef@gmail.com&quot;, &quot;password&quot;: &quot;testpassword123&quot;}&#x27;
+DEBUG    urllib3.connectionpool:connectionpool.py:226 Starting new HTTP connection (1): tests.local:80
+DEBUG    urllib3.connectionpool:connectionpool.py:433 http://tests.local:80 &quot;POST /wp-json/wc/v3/customers HTTP/1.1&quot; 400 None
+DEBUG    root:requestUtils.py:29 API POST response: {&#x27;code&#x27;: &#x27;registration-error-email-exists&#x27;, &#x27;message&#x27;: &#x27;An account is already registered with your email address. &lt;a href=&quot;#&quot; class=&quot;showlogin&quot;&gt;Please log in.&lt;/a&gt;&#x27;, &#x27;data&#x27;: {&#x27;status&#x27;: 400}}<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/customers/test_get_customer_smoke.py::test_get_all_customers</td>
+          <td class="col-duration">1.71</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:test_get_customer_smoke.py:8 TEST::get all customers
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:77 Signing request &lt;PreparedRequest [GET]&gt; using client &lt;Client client_key=ck_e7ab74195ab82fbd228cd20296b2e855f7659b25, client_secret=****, resource_owner_key=None, resource_owner_secret=None, signature_method=HMAC-SHA1, signature_type=AUTH_HEADER, callback_uri=None, rsa_key=None, verifier=None, realm=None, encoding=utf-8, decoding=utf-8, nonce=None, timestamp=None&gt;
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:91 Including body in call to sign: False
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:133 Collected params: [(&#x27;oauth_nonce&#x27;, &#x27;32974277660334309841608044471&#x27;), (&#x27;oauth_timestamp&#x27;, &#x27;1608044471&#x27;), (&#x27;oauth_version&#x27;, &#x27;1.0&#x27;), (&#x27;oauth_signature_method&#x27;, &#x27;HMAC-SHA1&#x27;), (&#x27;oauth_consumer_key&#x27;, &#x27;ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&#x27;)]
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:137 Normalized params: oauth_consumer_key=ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&amp;oauth_nonce=32974277660334309841608044471&amp;oauth_signature_method=HMAC-SHA1&amp;oauth_timestamp=1608044471&amp;oauth_version=1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:138 Normalized URI: http://tests.local/wp-json/wc/v3/customers
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:143 Signing: signature base string: GET&amp;http%3A%2F%2Ftests.local%2Fwp-json%2Fwc%2Fv3%2Fcustomers&amp;oauth_consumer_key%3Dck_e7ab74195ab82fbd228cd20296b2e855f7659b25%26oauth_nonce%3D32974277660334309841608044471%26oauth_signature_method%3DHMAC-SHA1%26oauth_timestamp%3D1608044471%26oauth_version%3D1.0
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:150 Signature: Pv3oOQByieNs6curVODRDJyThJY=
+DEBUG    oauthlib.oauth1.rfc5849:__init__.py:320 Encoding URI, headers and body to utf-8.
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:114 Updated url: http://tests.local/wp-json/wc/v3/customers
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:115 Updated headers: {b&#x27;User-Agent&#x27;: b&#x27;python-requests/2.25.0&#x27;, b&#x27;Accept-Encoding&#x27;: b&#x27;gzip, deflate&#x27;, b&#x27;Accept&#x27;: b&#x27;*/*&#x27;, b&#x27;Connection&#x27;: b&#x27;keep-alive&#x27;, b&#x27;Content-Type&#x27;: b&#x27;application/json&#x27;, b&#x27;Content-Length&#x27;: b&#x27;4&#x27;, b&#x27;Authorization&#x27;: b&#x27;OAuth oauth_nonce=&quot;32974277660334309841608044471&quot;, oauth_timestamp=&quot;1608044471&quot;, oauth_version=&quot;1.0&quot;, oauth_signature_method=&quot;HMAC-SHA1&quot;, oauth_consumer_key=&quot;ck_e7ab74195ab82fbd228cd20296b2e855f7659b25&quot;, oauth_signature=&quot;Pv3oOQByieNs6curVODRDJyThJY%3D&quot;&#x27;}
+DEBUG    requests_oauthlib.oauth1_auth:oauth1_auth.py:116 Updated body: &#x27;null&#x27;
+DEBUG    urllib3.connectionpool:connectionpool.py:226 Starting new HTTP connection (1): tests.local:80
+DEBUG    urllib3.connectionpool:connectionpool.py:433 http://tests.local:80 &quot;GET /wp-json/wc/v3/customers HTTP/1.1&quot; 200 None
+DEBUG    root:requestUtils.py:39 API GET response: [{&#x27;id&#x27;: 2, &#x27;date_created&#x27;: &#x27;2020-12-11T19:22:21&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-11T19:22:21&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-11T19:22:21&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-11T19:22:21&#x27;, &#x27;email&#x27;: &#x27;john.doe@example.com&#x27;, &#x27;first_name&#x27;: &#x27;John&#x27;, &#x27;last_name&#x27;: &#x27;Doe&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;john.doe&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;John&#x27;, &#x27;last_name&#x27;: &#x27;Doe&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;969 Market&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;San Francisco&#x27;, &#x27;postcode&#x27;: &#x27;94103&#x27;, &#x27;country&#x27;: &#x27;US&#x27;, &#x27;state&#x27;: &#x27;CA&#x27;, &#x27;email&#x27;: &#x27;123232.doe@example.com&#x27;, &#x27;phone&#x27;: &#x27;(555) 555-5555&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;John&#x27;, &#x27;last_name&#x27;: &#x27;Doe&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;969 Market&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;San Francisco&#x27;, &#x27;postcode&#x27;: &#x27;94103&#x27;, &#x27;country&#x27;: &#x27;US&#x27;, &#x27;state&#x27;: &#x27;CA&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://2.gravatar.com/avatar/8eb1b522f60d11fa897de1dc6351b7e8?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/2&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 11, &#x27;date_created&#x27;: &#x27;2020-12-12T18:24:28&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-12T18:24:28&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-12T18:24:28&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-12T18:24:28&#x27;, &#x27;email&#x27;: &#x27;john445.doe@example.com&#x27;, &#x27;first_name&#x27;: &#x27;John&#x27;, &#x27;last_name&#x27;: &#x27;Doe&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;john.doe6546&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;John&#x27;, &#x27;last_name&#x27;: &#x27;Doe&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;969 Market&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;San Francisco&#x27;, &#x27;postcode&#x27;: &#x27;94103&#x27;, &#x27;country&#x27;: &#x27;US&#x27;, &#x27;state&#x27;: &#x27;CA&#x27;, &#x27;email&#x27;: &#x27;123232.doe@example.com&#x27;, &#x27;phone&#x27;: &#x27;(555) 555-5555&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;John&#x27;, &#x27;last_name&#x27;: &#x27;Doe&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;969 Market&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;San Francisco&#x27;, &#x27;postcode&#x27;: &#x27;94103&#x27;, &#x27;country&#x27;: &#x27;US&#x27;, &#x27;state&#x27;: &#x27;CA&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://0.gravatar.com/avatar/996e6937eeb9f086efa9a257902887f8?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/11&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 18, &#x27;date_created&#x27;: &#x27;2020-12-12T18:57:29&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-12T18:57:29&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-12T18:57:29&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-12T18:57:29&#x27;, &#x27;email&#x27;: &#x27;testuser_bupggqdyyy@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_bupggqdyyy&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://2.gravatar.com/avatar/b28844257c8f4c221aff7d76d5f74853?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/18&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 31, &#x27;date_created&#x27;: &#x27;2020-12-15T09:35:10&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-15T09:35:10&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-15T09:35:10&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-15T09:35:10&#x27;, &#x27;email&#x27;: &#x27;testuser_bxclhmjrdc@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_bxclhmjrdc&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://2.gravatar.com/avatar/eee42e5ff99faa460449e2fc0f3a96b9?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/31&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 16, &#x27;date_created&#x27;: &#x27;2020-12-12T18:55:53&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-12T18:55:53&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-12T18:55:53&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-12T18:55:53&#x27;, &#x27;email&#x27;: &#x27;testuser_cckoscgwzy@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_cckoscgwzy&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://1.gravatar.com/avatar/dc3d1e2a9b05e03ba416f6166a793166?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/16&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 32, &#x27;date_created&#x27;: &#x27;2020-12-15T09:36:15&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-15T09:36:15&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-15T09:36:15&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-15T09:36:15&#x27;, &#x27;email&#x27;: &#x27;testuser_efrnjongpj@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_efrnjongpj&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://2.gravatar.com/avatar/82379025cfc6e614cdc29a3734c1eae2?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/32&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 49, &#x27;date_created&#x27;: &#x27;2020-12-15T13:41:52&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-15T13:41:52&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-15T13:41:52&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-15T13:41:52&#x27;, &#x27;email&#x27;: &#x27;testuser_ejfftlcyae@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_ejfftlcyae&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://2.gravatar.com/avatar/b589ec1d2ba85c77d4fdaf7c27d8740c?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/49&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 10, &#x27;date_created&#x27;: &#x27;2020-12-12T15:40:14&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-12T15:40:14&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-12T15:40:14&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-12T15:40:14&#x27;, &#x27;email&#x27;: &#x27;testuser_eszagshtyb@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_eszagshtyb&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://0.gravatar.com/avatar/38f3d43747305fc79859ca15dbc5e6ff?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/10&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 17, &#x27;date_created&#x27;: &#x27;2020-12-12T18:57:17&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-12T18:57:17&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-12T18:57:17&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-12T18:57:17&#x27;, &#x27;email&#x27;: &#x27;testuser_fkbnufrlcm@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_fkbnufrlcm&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://1.gravatar.com/avatar/7d457a4b6efac1bb66c29335483875db?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/17&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}, {&#x27;id&#x27;: 12, &#x27;date_created&#x27;: &#x27;2020-12-12T18:25:41&#x27;, &#x27;date_created_gmt&#x27;: &#x27;2020-12-12T18:25:41&#x27;, &#x27;date_modified&#x27;: &#x27;2020-12-12T18:25:41&#x27;, &#x27;date_modified_gmt&#x27;: &#x27;2020-12-12T18:25:41&#x27;, &#x27;email&#x27;: &#x27;testuser_gxtkoshxil@gmail.com&#x27;, &#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;role&#x27;: &#x27;customer&#x27;, &#x27;username&#x27;: &#x27;testuser_gxtkoshxil&#x27;, &#x27;billing&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;, &#x27;email&#x27;: &#x27;&#x27;, &#x27;phone&#x27;: &#x27;&#x27;}, &#x27;shipping&#x27;: {&#x27;first_name&#x27;: &#x27;&#x27;, &#x27;last_name&#x27;: &#x27;&#x27;, &#x27;company&#x27;: &#x27;&#x27;, &#x27;address_1&#x27;: &#x27;&#x27;, &#x27;address_2&#x27;: &#x27;&#x27;, &#x27;city&#x27;: &#x27;&#x27;, &#x27;postcode&#x27;: &#x27;&#x27;, &#x27;country&#x27;: &#x27;&#x27;, &#x27;state&#x27;: &#x27;&#x27;}, &#x27;is_paying_customer&#x27;: False, &#x27;avatar_url&#x27;: &#x27;http://1.gravatar.com/avatar/1bccfa501658c691b05a768d923e66a3?s=96&amp;d=mm&amp;r=g&#x27;, &#x27;meta_data&#x27;: [], &#x27;_links&#x27;: {&#x27;cls&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers/12&#x27;}], &#x27;collection&#x27;: [{&#x27;href&#x27;: &#x27;http://tests.local/wp-json/wc/v3/customers&#x27;}]}}]<br/></div></td></tr></tbody></table></body></html>
