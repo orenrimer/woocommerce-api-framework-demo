@@ -18,8 +18,8 @@ class OrdersHelper(object):
         max_pages = 1000
         page_num = 1
         while page_num < max_pages:
-            param = {'per_page': 100, 'page': page_num}
-            response = self.wcapi.get(wc_endpoint='products', params=param)
+            params = {'per_page': 100, 'page': page_num}
+            response = self.wcapi.get(wc_endpoint='products', params=params)
             if response:
                 page_num += 1
                 all_products.extend(response)
