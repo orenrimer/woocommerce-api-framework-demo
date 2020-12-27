@@ -14,8 +14,20 @@ class OrdersHelper(object):
         return self.wcapi.get(endpoint=f"orders/{order_id}", expected_status_code=expected_status_code)
 
     def get_all_orders(self):
-        orders_json = self.wcapi.get("orders")
-        return orders_json
+        all_products = []
+        max_pages = 1000
+        page_num = 1
+        while page_num < max_pages:
+            param = {'per_page': 100, 'page': page_num}
+            response = self.wcapi.get(wc_endpoint='products', params=param)
+            if response:
+                page_num += 1
+                all_products.extend(response)
+            else:
+                print("No results on page number {}. End loop of calling products.".format(page_num))
+                break
+
+        return all_products
 
     def create_order(self, additional_args=None, expected_status_code=201):
         payload_template = os.path.join(self.file_dir, "..", 'templates', 'create_order_payload.json')
