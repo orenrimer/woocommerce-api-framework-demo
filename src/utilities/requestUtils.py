@@ -38,3 +38,14 @@ class RequestUtils(object):
         self.validate_status_code(status_code, expected_status_code, url, response_json)
         logger.debug(f"API GET response: {response_json}")
         return response_json
+    
+    
+    def delete(self, endpoint, payload=None, headers=None, expected_status_code=200):
+        if not headers: headers = {'Content-Type': 'application/json'}
+        url = self.base_url + endpoint
+        response = requests.delete(url=url, data=json.dumps(payload), headers=headers, auth=self.auth)
+        status_code = response.status_code
+        response_json = response.json()
+        self.validate_status_code(status_code, expected_status_code, url, response_json)
+        logger.debug(f"API GET response: {response_json}")
+        return response_json
