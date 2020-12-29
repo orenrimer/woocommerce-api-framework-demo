@@ -47,5 +47,5 @@ class RequestUtils(object):
         status_code = response.status_code
         response_json = response.json()
         self.validate_status_code(status_code, expected_status_code, url, response_json)
-        logger.debug(f"API GET response: {response_json}")
+        logger.debug(f"API DELETE response: {response_json}")
         return response_json
