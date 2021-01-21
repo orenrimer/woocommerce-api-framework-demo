@@ -1,0 +1,5 @@
+setuptools~=50.3.2
+pytest~=6.1.2
+requests~=2.25.0
+PyMySQL~=0.10.1
+WooCommerce~=2.1.1
